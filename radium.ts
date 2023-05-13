@@ -13,6 +13,24 @@ import {
 } from "@raydium-io/raydium-sdk";
 import { OpenOrders } from "@project-serum/serum";
 import BN from "bn.js";
+import fetch from 'node-fetch';
+
+async function getMarketProgramId(id: string): Promise<string | undefined> {
+  try {
+    const response = await fetch('https://api.raydium.io/v2/sdk/liquidity/mainnet.json');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const result: any = await response.json();
+    const data = result.official;
+
+    const item = data.find((item: any) => item.id === id);
+    return item ? item.marketProgramId : undefined;
+  } catch (error) {
+    console.error(`Fetch Error: ${error}`);
+    return undefined;
+  }
+}
 
 async function getTokenAccounts(connection: Connection, owner: PublicKey) {
   const tokenResp = await connection.getTokenAccountsByOwner(owner, {
@@ -34,11 +52,11 @@ async function getTokenAccounts(connection: Connection, owner: PublicKey) {
 const SOL_USDC_POOL_ID = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2";
 const RAY_SOL_POOL_ID = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA";
 const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
-const OPENBOOK_PROGRAM_ID = new PublicKey(
-  "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX"
-);
+// const OPENBOOK_PROGRAM_ID = new PublicKey(
+//   "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX"
+// );
 
-export async function parsePoolInfo(pool_id: String, market: String) {
+export async function parsePoolInfo(pool_id: string, market: string) {
   const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
   const owner = new PublicKey("VnxDzsZ7chE88e9rB6UKztCt2HUwrkgCTx8WieWf5mM");
 
@@ -47,6 +65,14 @@ export async function parsePoolInfo(pool_id: String, market: String) {
   // example to get pool info
   const info = await connection.getAccountInfo(new PublicKey(pool_id));
   if (!info) return;
+
+  const poolProgramId = await getMarketProgramId(pool_id);
+  if (!poolProgramId) {
+    console.error('No matching pool ID found!');
+    return
+  }
+
+  const OPENBOOK_PROGRAM_ID = new PublicKey(poolProgramId);
 
   const poolState = LIQUIDITY_STATE_LAYOUT_V4.decode(info.data);
   const openOrders = await OpenOrders.load(
@@ -87,27 +113,22 @@ export async function parsePoolInfo(pool_id: String, market: String) {
   );
 
   console.log(
-    // "SOL_USDC pool info:",
-    // "pool total base " + base,
-    // "pool total quote " + quote,
-
-    // "base vault balance " + baseTokenAmount.value.uiAmount,
-    // "quote vault balance " + quoteTokenAmount.value.uiAmount,
-
-    // "base tokens in openorders " + openOrdersBaseTokenTotal,
-    // "quote tokens in openorders  " + openOrdersQuoteTokenTotal,
-
-    // "base token decimals " + poolState.baseDecimal.toNumber(),
-    // "quote token decimals " + poolState.quoteDecimal.toNumber(),
-    // "total lp " + poolState.lpReserve.div(denominator).toString(),
-
-    // "addedLpAmount " +
-    //   (addedLpAccount?.accountInfo.amount.toNumber() || 0) / baseDecimal,
-
     market + ": " +  quote / base
   );
 }
 
+// for (let i of [RAY_SOL_POOL_ID]) {
+//   console.log(i);
+//   getMarketProgramId(i).then(marketProgramId => {
+//     if (marketProgramId) {
+//       console.log(`marketProgramId: ${marketProgramId}`);
+//     } else {
+//       console.log('No matching ID found!');
+//     }
+//   });
+// }
+
+
 parsePoolInfo(SOL_USDC_POOL_ID, "SOL TO USDC");
-parsePoolInfo(RAY_USDC_POOL_ID, "RAY TO USDC");
-// parsePoolInfo(RAY_SOL_POOL_ID, "RAY TO SOL");
+// parsePoolInfo(RAY_USDC_POOL_ID, "RAY TO USDC");
+parsePoolInfo(RAY_SOL_POOL_ID, "RAY TO SOL");
