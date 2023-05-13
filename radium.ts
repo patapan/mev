@@ -49,6 +49,8 @@ async function getTokenAccounts(connection: Connection, owner: PublicKey) {
 }
 
 // raydium pool id can get from api: https://api.raydium.io/v2/sdk/liquidity/mainnet.json
+// TODO(patapan) We could just go through that json, checking pool IDs.
+
 const SOL_USDC_POOL_ID = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2";
 const RAY_SOL_POOL_ID = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA";
 const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
@@ -119,7 +121,7 @@ export async function parsePoolInfo(pool_id: string, market: string) {
 
 type Matrix = number[][];
 
-function calculateArbitrageOpportunity(prices: Matrix, investment: number = 10000): [boolean, number[], number] {
+function calculateArbitrageOpportunity(prices: Matrix, investment: number = 1000): [boolean, number[], number] {
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
       if (i === j) {
