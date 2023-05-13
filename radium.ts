@@ -52,12 +52,10 @@ async function getTokenAccounts(connection: Connection, owner: PublicKey) {
 const SOL_USDC_POOL_ID = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2";
 const RAY_SOL_POOL_ID = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA";
 const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
-// const OPENBOOK_PROGRAM_ID = new PublicKey(
-//   "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX"
-// );
+
 
 export async function parsePoolInfo(pool_id: string, market: string) {
-  const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+  const connection = new Connection("https://solana-mainnet.rpc.extrnode.com", "confirmed");
   const owner = new PublicKey("VnxDzsZ7chE88e9rB6UKztCt2HUwrkgCTx8WieWf5mM");
 
   const tokenAccounts = await getTokenAccounts(connection, owner);
@@ -115,20 +113,76 @@ export async function parsePoolInfo(pool_id: string, market: string) {
   console.log(
     market + ": " +  quote / base
   );
+
+  return quote / base
 }
 
-// for (let i of [RAY_SOL_POOL_ID]) {
-//   console.log(i);
-//   getMarketProgramId(i).then(marketProgramId => {
-//     if (marketProgramId) {
-//       console.log(`marketProgramId: ${marketProgramId}`);
-//     } else {
-//       console.log('No matching ID found!');
-//     }
-//   });
-// }
+type Matrix = number[][];
+
+function calculateArbitrageOpportunity(prices: Matrix, investment: number = 10000): [boolean, number[], number] {
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      if (i === j) {
+        if (prices[i][j] !== 1.0) {
+          throw new Error(`Invalid conversion rate: ${prices[i][j]} at (${i}, ${j})`);
+        }
+      } else {
+        if (prices[i][j] <= 0) {
+          throw new Error(`Invalid conversion rate: ${prices[i][j]} at (${i}, ${j})`);
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      for (let k = 0; k < 3; k++) {
+        if (i !== j && j !== k && k !== i) {
+          let finalAmount = investment * prices[i][j] * prices[j][k] * prices[k][i];
+          if (finalAmount > investment) { //atleast 5% profit
+            let profit = finalAmount - investment;
+            return [true, [i, j, k], profit];
+          }
+        }
+      }
+    }
+  }
+  return [false, [], 0];
+}
+
+function createConversionMatrix(rates: number[]): number[][] {
+  if (rates.length !== 3) {
+    throw new Error("Expected exactly three exchange rates");
+  }
+
+  // Initialize a 3x3 matrix with 1's on the diagonal
+  let conversionMatrix = Array(3).fill(0).map(() => Array(3).fill(1));
+
+  // Fill in the given rates and their reciprocals
+  for (let i = 0; i < 3; i++) {
+    let j = (i + 1) % 3;
+    conversionMatrix[i][j] = rates[i];
+    conversionMatrix[j][i] = 1 / rates[i];
+  }
+
+  return conversionMatrix;
+}
 
 
-parsePoolInfo(SOL_USDC_POOL_ID, "SOL TO USDC");
-// parsePoolInfo(RAY_USDC_POOL_ID, "RAY TO USDC");
-parsePoolInfo(RAY_SOL_POOL_ID, "RAY TO SOL");
+async function fetchAndCreateMatrix() {
+  let SOL_TO_USDC = await parsePoolInfo(SOL_USDC_POOL_ID, "SOL TO USDC");
+  let RAY_TO_USDC = await parsePoolInfo(RAY_USDC_POOL_ID, "RAY TO USDC");
+  let RAY_TO_SOL = await parsePoolInfo(RAY_SOL_POOL_ID, "RAY TO SOL");
+
+  if (SOL_TO_USDC === undefined || RAY_TO_USDC === undefined || RAY_TO_SOL === undefined) {
+    throw new Error('Failed to fetch one or more exchange rates');
+  }
+
+  // Order is SOL, USDC, RAY. We do 1 / X to invert the rate
+  return createConversionMatrix([SOL_TO_USDC, 1 / RAY_TO_USDC, RAY_TO_SOL]);
+}
+
+fetchAndCreateMatrix().then(matrix => {
+  console.log(matrix);
+  console.log(calculateArbitrageOpportunity(matrix))
+});
