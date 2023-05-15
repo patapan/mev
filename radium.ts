@@ -64,6 +64,7 @@ export async function parsePoolInfo(pool_id: string, market: string) {
 
   // example to get pool info
   const info = await connection.getAccountInfo(new PublicKey(pool_id));
+  console.log(info)
   if (!info) return;
 
   const poolProgramId = await getMarketProgramId(pool_id);
@@ -187,7 +188,9 @@ async function fetchAndCreateMatrix() {
   return createConversionMatrix([SOL_TO_USDC, 1 / RAY_TO_USDC, RAY_TO_SOL]);
 }
 
-fetchAndCreateMatrix().then(matrix => {
-  console.log(matrix);
-  console.log(calculateArbitrageOpportunity(matrix))
-});
+// fetchAndCreateMatrix().then(matrix => {
+//   console.log(matrix);
+//   console.log(calculateArbitrageOpportunity(matrix))
+// });
+
+console.log(parsePoolInfo("3mYsmBQLB8EZSjRwtWjPbbE8LiM1oCCtNZZKiVBKsePa", "CWAR TO USDC"));
