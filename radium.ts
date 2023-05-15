@@ -172,9 +172,12 @@ function createConversionMatrix(rates: number[]): number[][] {
 
 
 async function fetchAndCreateMatrix() {
-  let SOL_TO_USDC = await parsePoolInfo(SOL_USDC_POOL_ID, "SOL TO USDC");
-  let RAY_TO_USDC = await parsePoolInfo(RAY_USDC_POOL_ID, "RAY TO USDC");
-  let RAY_TO_SOL = await parsePoolInfo(RAY_SOL_POOL_ID, "RAY TO SOL");
+  const [SOL_TO_USDC, RAY_TO_USDC, RAY_TO_SOL] = await Promise.all([
+    parsePoolInfo(SOL_USDC_POOL_ID, "SOL TO USDC"),
+    parsePoolInfo(RAY_USDC_POOL_ID, "RAY TO USDC"),
+    parsePoolInfo(RAY_SOL_POOL_ID, "RAY TO SOL")
+  ]);
+
 
   if (SOL_TO_USDC === undefined || RAY_TO_USDC === undefined || RAY_TO_SOL === undefined) {
     throw new Error('Failed to fetch one or more exchange rates');
