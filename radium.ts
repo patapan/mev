@@ -48,13 +48,6 @@ async function getTokenAccounts(connection: Connection, owner: PublicKey) {
   return accounts;
 }
 
-// raydium pool id can get from api: https://api.raydium.io/v2/sdk/liquidity/mainnet.json
-// TODO(patapan) We could just go through that json, checking pool IDs.
-
-const SOL_USDC_POOL_ID = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2";
-const RAY_SOL_POOL_ID = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA";
-const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
-
 
 export async function parsePoolInfo(pool_id: string, market: string) {
   const connection = new Connection("https://solana-mainnet.rpc.extrnode.com", "confirmed");
@@ -153,7 +146,10 @@ function calculateArbitrageOpportunity(prices: Matrix, investment: number = 1000
   return [false, [], 0];
 }
 
-function createConversionMatrix(rates: number[]): number[][] {
+/*
+Constructs a matrix describing the exchange rate between tokens
+*/
+function createPriceMatrix(rates: number[]): number[][] {
   if (rates.length !== 3) {
     throw new Error("Expected exactly three exchange rates");
   }
@@ -171,6 +167,13 @@ function createConversionMatrix(rates: number[]): number[][] {
   return conversionMatrix;
 }
 
+// raydium pool id can get from api: https://api.raydium.io/v2/sdk/liquidity/mainnet.json
+// TODO(patapan) We could just go through that json, checking pool IDs.
+
+const SOL_USDC_POOL_ID = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2";
+const RAY_SOL_POOL_ID = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA";
+const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
+const SOL_BTC_POOL_ID = "HCfytQ49w6Dn9UhHCqjNYTZYQ6z5SwqmsyYYqW4EKDdA";
 
 async function fetchAndCreateMatrix() {
   const [SOL_TO_USDC, RAY_TO_USDC, RAY_TO_SOL] = await Promise.all([
@@ -185,12 +188,12 @@ async function fetchAndCreateMatrix() {
   }
 
   // Order is SOL, USDC, RAY. We do 1 / X to invert the rate
-  return createConversionMatrix([SOL_TO_USDC, 1 / RAY_TO_USDC, RAY_TO_SOL]);
+  return createPriceMatrix([SOL_TO_USDC, 1 / RAY_TO_USDC, RAY_TO_SOL]);
 }
 
-// fetchAndCreateMatrix().then(matrix => {
-//   console.log(matrix);
-//   console.log(calculateArbitrageOpportunity(matrix))
-// });
+fetchAndCreateMatrix().then(matrix => {
+  console.log(matrix);
+  console.log(calculateArbitrageOpportunity(matrix))
+});
 
-console.log(parsePoolInfo("3mYsmBQLB8EZSjRwtWjPbbE8LiM1oCCtNZZKiVBKsePa", "CWAR TO USDC"));
+// console.log(parsePoolInfo("3mYsmBQLB8EZSjRwtWjPbbE8LiM1oCCtNZZKiVBKsePa", "CWAR TO USDC"));
