@@ -5,15 +5,14 @@ Taken from https://github.com/raydium-io/raydium-sdk
 */
 
 import { Connection, PublicKey } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
-  TokenAccount,
-  SPL_ACCOUNT_LAYOUT,
   LIQUIDITY_STATE_LAYOUT_V4,
 } from "@raydium-io/raydium-sdk";
 import { OpenOrders } from "@project-serum/serum";
 import BN from "bn.js";
 import fetch from 'node-fetch';
+import readline from 'readline';
+import fs from 'fs';
 
 /* Retrieves the associated marketProgramId of a given pool id */
 async function getMarketProgramId(id: string): Promise<string | undefined> {
@@ -89,10 +88,8 @@ export async function getPoolPrice(pool_id: string, market: string) {
   return quote / base
 }
 
-type Matrix = number[][];
-
 /*  Given a matrix of prices, identifies potential arbitrage opportunities */
-function calculateArbitrageOpportunity(prices: Matrix, investment: number = 200): [boolean, number[], number] {
+function calculateArbitrageOpportunity(prices: number[][], investment: number = 200): [boolean, number[], number] {
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
       if (i === j) {
@@ -142,6 +139,33 @@ function createPriceMatrix(rates: number[]): number[][] {
   return conversionMatrix;
 }
 
+
+function createPoolIdMatrix(pool_data_file: string): number[][] {
+  //TODO(patapan) implement
+  return [[0,0]];
+}
+
+async function main() {
+  // iterate through data/valid_triplets.txt
+  const fileStream = fs.createReadStream("data/valid_triplets.txt");
+
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity
+  });
+
+  for await (const line of rl) {
+    // Each line in the file will be successively available here as `line`.
+    console.log(`Line from file: ${line}`);
+  }
+  //  for each triplet
+  //    construct matrix of pool_ids using data/official_pool_data.txt
+  //    then, using matrix of pool_ids, construct a new matrix of prices
+  //    call arbitrage function on price matrix
+}
+
+// Everything below here should be removed/refactored into main
+
 // raydium pool id can get from api: https://api.raydium.io/v2/sdk/liquidity/mainnet.json
 const SOL_USDC_POOL_ID = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2";
 const RAY_SOL_POOL_ID = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA";
@@ -164,7 +188,8 @@ async function fetchAndCreateMatrix() {
   return createPriceMatrix([SOL_TO_USDC, 1 / RAY_TO_USDC, RAY_TO_SOL]);
 }
 
-fetchAndCreateMatrix().then(matrix => {
-  // console.log(matrix);
-  console.log(calculateArbitrageOpportunity(matrix))
-});
+main()
+
+// fetchAndCreateMatrix().then(matrix => {
+//   console.log(calculateArbitrageOpportunity(matrix))
+// });
