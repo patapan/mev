@@ -121,7 +121,7 @@ function calculateArbitrageOpportunity(prices: number[][], investment: number = 
 }
 
 /* Constructs a matrix describing the exchange rate between tokens */
-function createPriceMatrix(rates: number[]): number[][] {
+function constructPriceMatrix(rates: number[]): number[][] {
   if (rates.length !== 3) {
     throw new Error("Expected exactly three exchange rates");
   }
@@ -139,10 +139,15 @@ function createPriceMatrix(rates: number[]): number[][] {
   return conversionMatrix;
 }
 
-
-function createPoolIdMatrix(pool_data_file: string): number[][] {
+/* Returns array of format [SOL_USDC_POOL_ID, USDC_ETH_POOL_ID, ETH_SOL_POOL_ID] */
+function constructPoolIdArray(token_ids: string[], pool_data_file: string): number[] {
   //TODO(patapan) implement
-  return [[0,0]];
+  let ret = [];
+
+  // we need to turn pool_data_file into a map which we can call like map[SOL][ETH] = SOL_ETH_POOL_ID
+
+
+  return ret;
 }
 
 async function main() {
@@ -154,14 +159,17 @@ async function main() {
     crlfDelay: Infinity
   });
 
-  for await (const line of rl) {
-    // Each line in the file will be successively available here as `line`.
-    console.log(`Line from file: ${line}`);
+  for await (const triplet of rl) {
+    console.log(triplet);
+    // construct 3x3 matrix of pool_ids using data/official_pool_data.txt
+    let pool_array = constructPoolIdArray(triplet.split(","), "data/official_pool_data.txt");
+    // using matrix of pool_ids, construct a new matrix of prices
+    // TODO(PATAPAN) question -- How do we know when we need to invert a price. This is based on the order of the tokens in the pool array
+    let price_matrix = constructPriceMatrix(pool_array);
+
+    calculateArbitrageOpportunity(price_matrix);
+  
   }
-  //  for each triplet
-  //    construct matrix of pool_ids using data/official_pool_data.txt
-  //    then, using matrix of pool_ids, construct a new matrix of prices
-  //    call arbitrage function on price matrix
 }
 
 // Everything below here should be removed/refactored into main
@@ -185,7 +193,7 @@ async function fetchAndCreateMatrix() {
   }
 
   // Order is SOL, USDC, RAY. We do 1 / X to invert the rate
-  return createPriceMatrix([SOL_TO_USDC, 1 / RAY_TO_USDC, RAY_TO_SOL]);
+  return constructPriceMatrix([SOL_TO_USDC, 1 / RAY_TO_USDC, RAY_TO_SOL]);
 }
 
 main()
