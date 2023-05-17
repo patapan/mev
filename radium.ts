@@ -15,7 +15,7 @@ import { OpenOrders } from "@project-serum/serum";
 import BN from "bn.js";
 import fetch from 'node-fetch';
 
-/* Retrieves the associated marketProgramId of a given poolId */
+/* Retrieves the associated marketProgramId of a given pool id */
 async function getMarketProgramId(id: string): Promise<string | undefined> {
   try {
     const response = await fetch('https://api.raydium.io/v2/sdk/liquidity/mainnet.json');
@@ -33,7 +33,8 @@ async function getMarketProgramId(id: string): Promise<string | undefined> {
   }
 }
 
-export async function parsePoolInfo(pool_id: string, market: string) {
+/* Retrieve the exchange rate given a pool id */
+export async function getPoolPrice(pool_id: string, market: string) {
   const connection = new Connection("https://solana-mainnet.rpc.extrnode.com", "confirmed");
 
   // example to get pool info
@@ -90,6 +91,7 @@ export async function parsePoolInfo(pool_id: string, market: string) {
 
 type Matrix = number[][];
 
+/*  Given a matrix of prices, identifies potential arbitrage opportunities */
 function calculateArbitrageOpportunity(prices: Matrix, investment: number = 200): [boolean, number[], number] {
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
@@ -121,9 +123,7 @@ function calculateArbitrageOpportunity(prices: Matrix, investment: number = 200)
   return [false, [], 0];
 }
 
-/*
-Constructs a matrix describing the exchange rate between tokens
-*/
+/* Constructs a matrix describing the exchange rate between tokens */
 function createPriceMatrix(rates: number[]): number[][] {
   if (rates.length !== 3) {
     throw new Error("Expected exactly three exchange rates");
@@ -143,8 +143,6 @@ function createPriceMatrix(rates: number[]): number[][] {
 }
 
 // raydium pool id can get from api: https://api.raydium.io/v2/sdk/liquidity/mainnet.json
-// TODO(patapan) We could just go through that json, checking pool IDs.
-
 const SOL_USDC_POOL_ID = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2";
 const RAY_SOL_POOL_ID = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA";
 const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
@@ -152,9 +150,9 @@ const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
 
 async function fetchAndCreateMatrix() {
   const [SOL_TO_USDC, RAY_TO_USDC, RAY_TO_SOL] = await Promise.all([
-    parsePoolInfo(SOL_USDC_POOL_ID, "SOL TO USDC"),
-    parsePoolInfo(RAY_USDC_POOL_ID, "RAY TO USDC"),
-    parsePoolInfo(RAY_SOL_POOL_ID, "RAY TO SOL")
+    getPoolPrice(SOL_USDC_POOL_ID, "SOL TO USDC"),
+    getPoolPrice(RAY_USDC_POOL_ID, "RAY TO USDC"),
+    getPoolPrice(RAY_SOL_POOL_ID, "RAY TO SOL")
   ]);
 
 
@@ -170,5 +168,3 @@ fetchAndCreateMatrix().then(matrix => {
   // console.log(matrix);
   console.log(calculateArbitrageOpportunity(matrix))
 });
-
-// console.log(parsePoolInfo("3mYsmBQLB8EZSjRwtWjPbbE8LiM1oCCtNZZKiVBKsePa", "CWAR TO USDC"));
