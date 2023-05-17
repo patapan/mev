@@ -15,6 +15,7 @@ import { OpenOrders } from "@project-serum/serum";
 import BN from "bn.js";
 import fetch from 'node-fetch';
 
+/* Retrieves the associated marketProgramId of a given poolId */
 async function getMarketProgramId(id: string): Promise<string | undefined> {
   try {
     const response = await fetch('https://api.raydium.io/v2/sdk/liquidity/mainnet.json');
@@ -32,32 +33,12 @@ async function getMarketProgramId(id: string): Promise<string | undefined> {
   }
 }
 
-async function getTokenAccounts(connection: Connection, owner: PublicKey) {
-  const tokenResp = await connection.getTokenAccountsByOwner(owner, {
-    programId: TOKEN_PROGRAM_ID,
-  });
-
-  const accounts: TokenAccount[] = [];
-  for (const { pubkey, account } of tokenResp.value) {
-    accounts.push({
-      pubkey,
-      accountInfo: SPL_ACCOUNT_LAYOUT.decode(account.data),
-    });
-  }
-
-  return accounts;
-}
-
-
 export async function parsePoolInfo(pool_id: string, market: string) {
   const connection = new Connection("https://solana-mainnet.rpc.extrnode.com", "confirmed");
-  const owner = new PublicKey("VnxDzsZ7chE88e9rB6UKztCt2HUwrkgCTx8WieWf5mM");
-
-  const tokenAccounts = await getTokenAccounts(connection, owner);
 
   // example to get pool info
   const info = await connection.getAccountInfo(new PublicKey(pool_id));
-  console.log(info)
+  // console.log(info)
   if (!info) return;
 
   const poolProgramId = await getMarketProgramId(pool_id);
@@ -100,12 +81,6 @@ export async function parsePoolInfo(pool_id: string, market: string) {
     openOrdersQuoteTokenTotal -
     quotePnl;
 
-  const denominator = new BN(10).pow(poolState.baseDecimal);
-
-  const addedLpAccount = tokenAccounts.find((a) =>
-    a.accountInfo.mint.equals(poolState.lpMint)
-  );
-
   console.log(
     market + ": " +  quote / base
   );
@@ -115,7 +90,7 @@ export async function parsePoolInfo(pool_id: string, market: string) {
 
 type Matrix = number[][];
 
-function calculateArbitrageOpportunity(prices: Matrix, investment: number = 1000): [boolean, number[], number] {
+function calculateArbitrageOpportunity(prices: Matrix, investment: number = 200): [boolean, number[], number] {
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
       if (i === j) {
@@ -173,7 +148,7 @@ function createPriceMatrix(rates: number[]): number[][] {
 const SOL_USDC_POOL_ID = "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2";
 const RAY_SOL_POOL_ID = "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA";
 const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
-const SOL_BTC_POOL_ID = "HCfytQ49w6Dn9UhHCqjNYTZYQ6z5SwqmsyYYqW4EKDdA";
+
 
 async function fetchAndCreateMatrix() {
   const [SOL_TO_USDC, RAY_TO_USDC, RAY_TO_SOL] = await Promise.all([
@@ -192,7 +167,7 @@ async function fetchAndCreateMatrix() {
 }
 
 fetchAndCreateMatrix().then(matrix => {
-  console.log(matrix);
+  // console.log(matrix);
   console.log(calculateArbitrageOpportunity(matrix))
 });
 
