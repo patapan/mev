@@ -14,6 +14,9 @@ import fetch from 'node-fetch';
 import readline from 'readline';
 import fs from 'fs';
 
+// create the pool id map
+const poolIdMap = createPoolIdMap();
+
 /* Retrieves the associated marketProgramId of a given pool id */
 async function getMarketProgramId(id: string): Promise<string | undefined> {
   try {
@@ -33,7 +36,7 @@ async function getMarketProgramId(id: string): Promise<string | undefined> {
 }
 
 /* Retrieve the exchange rate given a pool id */
-export async function getPoolPrice(pool_id: string, market: string) {
+export async function getPoolPrice(pool_id: string) {
   const connection = new Connection("https://solana-mainnet.rpc.extrnode.com", "confirmed");
 
   // example to get pool info
@@ -81,11 +84,7 @@ export async function getPoolPrice(pool_id: string, market: string) {
     openOrdersQuoteTokenTotal -
     quotePnl;
 
-  console.log(
-    market + ": " +  quote / base
-  );
-
-  return quote / base
+  return quote / base;
 }
 
 /*  Given a matrix of prices, identifies potential arbitrage opportunities */
@@ -139,37 +138,75 @@ function constructPriceMatrix(rates: number[]): number[][] {
   return conversionMatrix;
 }
 
-/* Returns array of format [SOL_USDC_POOL_ID, USDC_ETH_POOL_ID, ETH_SOL_POOL_ID] */
-function constructPoolIdArray(token_ids: string[], pool_data_file: string): number[] {
-  //TODO(patapan) implement
-  let ret = [];
+// /* Returns array of format [SOL_USDC_POOL_ID, USDC_ETH_POOL_ID, ETH_SOL_POOL_ID] */
+// function constructPoolIdArray(token_ids: string[], pool_data_file: string): number[] {
+//   //TODO(patapan) implement
 
-  // we need to turn pool_data_file into a map which we can call like map[SOL][ETH] = SOL_ETH_POOL_ID
+//   // we need to turn pool_data_file into a map which we can call like map[SOL][ETH] = SOL_ETH_POOL_ID
 
 
-  return ret;
+//   return ret;
+// }
+
+/* Create a map of all token combinations to pool IDs */
+function createPoolIdMap() {
+  const poolData = fs.readFileSync('./data/official_pool_data.txt', 'utf-8');
+  const lines = poolData.split('\n');
+  const poolIdMap = new Map();
+
+  for (const line of lines) {
+    const [id, pair] = line.split(',');
+    poolIdMap.set(pair, id);
+  }
+
+  return poolIdMap;
 }
 
-async function main() {
-  // iterate through data/valid_triplets.txt
-  const fileStream = fs.createReadStream("data/valid_triplets.txt");
+/* Retrieve the price of a given quantity of a token in terms of another token */
+export async function getRaydiumPrice(token1: string, token2: string, quantity = 1) {
 
-  const rl = readline.createInterface({
-    input: fileStream,
-    crlfDelay: Infinity
-  });
-
-  for await (const triplet of rl) {
-    console.log(triplet);
-    // construct 3x3 matrix of pool_ids using data/official_pool_data.txt
-    let pool_array = constructPoolIdArray(triplet.split(","), "data/official_pool_data.txt");
-    // using matrix of pool_ids, construct a new matrix of prices
-    // TODO(PATAPAN) question -- How do we know when we need to invert a price. This is based on the order of the tokens in the pool array
-    let price_matrix = constructPriceMatrix(pool_array);
-
-    calculateArbitrageOpportunity(price_matrix);
-  
+  // find the pool id for the given tokens
+  let poolId = poolIdMap.get(`${token1}-${token2}`);
+  if (!poolId) {
+    poolId = poolIdMap.get(`${token2}-${token1}`);
   }
+
+  if (!poolId) {
+    throw new Error(`No pool found for ${token1} and ${token2}`);
+  }
+
+  // get the price of 1 unit of token1 in terms of token2
+  const price = await getPoolPrice(poolId);
+
+  // return the price of the given quantity of token1 in terms of token2
+  if (typeof price === 'number'){
+    return price * quantity;
+  } else {
+    throw new Error ('Error getting price');
+  }
+}
+async function main() {
+  console.log("start");
+  console.log(await getRaydiumPrice("SOL", "USDC"));
+  console.log(await getRaydiumPrice("RAY", "USDC"));
+  // iterate through data/valid_triplets.txt
+  // const fileStream = fs.createReadStream("data/valid_triplets.txt");
+
+  // const rl = readline.createInterface({
+  //   input: fileStream,
+  //   crlfDelay: Infinity
+  // });
+
+  // for await (const triplet of rl) {
+  //   console.log(triplet);
+  //   // construct 3x3 matrix of pool_ids using data/official_pool_data.txt
+  //   let pool_array = constructPoolIdArray(triplet.split(","), "data/official_pool_data.txt");
+  //   // using matrix of pool_ids, construct a new matrix of prices
+  //   // TODO(PATAPAN) question -- How do we know when we need to invert a price. This is based on the order of the tokens in the pool array
+  //   let price_matrix = constructPriceMatrix(pool_array);
+
+  //   calculateArbitrageOpportunity(price_matrix);
+  // }
 }
 
 // Everything below here should be removed/refactored into main
@@ -182,9 +219,9 @@ const RAY_USDC_POOL_ID = "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg";
 
 async function fetchAndCreateMatrix() {
   const [SOL_TO_USDC, RAY_TO_USDC, RAY_TO_SOL] = await Promise.all([
-    getPoolPrice(SOL_USDC_POOL_ID, "SOL TO USDC"),
-    getPoolPrice(RAY_USDC_POOL_ID, "RAY TO USDC"),
-    getPoolPrice(RAY_SOL_POOL_ID, "RAY TO SOL")
+    getPoolPrice(SOL_USDC_POOL_ID),
+    getPoolPrice(RAY_USDC_POOL_ID),
+    getPoolPrice(RAY_SOL_POOL_ID)
   ]);
 
 
