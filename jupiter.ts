@@ -43,7 +43,7 @@ function getTokenIdsFromTxt(): TokenData {
 }
 
 /*  Given a matrix of prices, identifies potential arbitrage opportunities */
-function calculateArbitrageOpportunity(prices: number[][], investment: number = 200): [boolean, number[], number] {
+function calculateArbitrageOpportunity(prices: number[][], investment: number = 1000): [boolean, number[], number] {
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
         if (i === j) {
@@ -63,7 +63,7 @@ function calculateArbitrageOpportunity(prices: number[][], investment: number = 
         for (let k = 0; k < 3; k++) {
           if (i !== j && j !== k && k !== i) {
             let finalAmount = investment * prices[i][j] * prices[j][k] * prices[k][i];
-            if (finalAmount > investment * 1.03) { //atleast 3% profit
+            if (finalAmount > investment * 1.01) { //atleast 1% profit
               let profit = finalAmount - investment;
               return [true, [i, j, k], profit];
             }
