@@ -46,7 +46,9 @@ async function main() {
     
     const valid_tokens = ['SOL', 'USDC', 'RAY'];
 
+    // Every 10 seconds, get all combo prices of valid_tokens on jupiter
     while (true) {
+        console.log("Jupiter DEX")
         for (let i = 0; i < valid_tokens.length; i++ ) {
             for (let j = i + 1; j < valid_tokens.length; j++) {
                 let token_1 = valid_tokens[i]
