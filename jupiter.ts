@@ -75,37 +75,46 @@ function calculateArbitrageOpportunity(prices: number[][], investment: number = 
   }
 
   async function main() {
-    
-    const valid_tokens = ['SOL', 'USDC', 'RAY'];
+    // turn valid_tokens into retireving all combos of 3 on jupiter
+    const valid_tokens = [
+        ['SOL', 'USDC', 'RAY'],
+        ['USDC', 'ORCA', 'SOL'],
+        ['USDC', 'BTC', 'SOL'],
+        ['USDC', 'GENE', 'SOL'],
+    ];
 
     // Every 10 seconds, get all combo prices of valid_tokens on jupiter
     while (true) {
-        console.log("Jupiter DEX")
-        let prices: number[][] = []; // create array to hold prices
+        for (let triplet of valid_tokens) {
+            console.log("Jupiter DEX Triplet: " + triplet)
+            let prices: number[][] = []; // create array to hold prices
 
-        for (let i = 0; i < valid_tokens.length; i++ ) {
-            let row: number[] = [];
-            for (let j = 0; j < valid_tokens.length; j++) {
-                if (i === j) {
-                    row.push(1.0); // add 1.0 for same token to token conversion rate
-                } else {
-                    let token_1 = valid_tokens[i]
-                    let token_2 = valid_tokens[j]; 
-                    const jupiterPrice = await getJupiterPrice(token_ids[token_1], token_ids[token_2]);
-                    row.push(jupiterPrice);
+            for (let i = 0; i < triplet.length; i++ ) {
+                let row: number[] = [];
+                for (let j = 0; j < triplet.length; j++) {
+                    if (i === j) {
+                        row.push(1.0); // add 1.0 for same token to token conversion rate
+                    } else {
+                        let token_1 = triplet[i]
+                        let token_2 = triplet[j]; 
+                        const jupiterPrice = await getJupiterPrice(token_ids[token_1], token_ids[token_2]);
+                        row.push(jupiterPrice);
 
-                    console.log(token_1 + " to " + token_2 + ": " + jupiterPrice);
-                }   
+                        console.log(token_1 + " to " + token_2 + ": " + jupiterPrice);
+                    }   
+                }
+                prices.push(row);
             }
-            prices.push(row);
-        }
 
-        // Check for arbitrage opportunity after each price matrix fetch
-        const [hasOpportunity, sequence, profit] = calculateArbitrageOpportunity(prices);
-        if (hasOpportunity) {
-            console.log(`Arbitrage opportunity detected with the sequence: ${sequence.map(idx => valid_tokens[idx]).join(' -> ')}. Estimated profit: ${profit}`);
-        }
+            // Check for arbitrage opportunity after each price matrix fetch
+            const [hasOpportunity, sequence, profit] = calculateArbitrageOpportunity(prices);
+            if (hasOpportunity) {
+                console.log(`Arbitrage opportunity detected with the sequence: ${sequence.map(idx => triplet[idx]).join(' -> ')}. Estimated profit: ${profit}`);
+                process.exit(1);
+            }
 
+        }
+        
         await new Promise(resolve => setTimeout(resolve, 10000));
     }
 }
