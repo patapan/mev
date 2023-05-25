@@ -1,3 +1,3 @@
 # arbitrage
 
-A collection of price indexing for sol dexes.
+A collection of price indexing and arb calc for sol dexes.
